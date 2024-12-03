@@ -1,7 +1,6 @@
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
-import java.util.Arrays;
 
 public class Simplex {
     String[] signs;
@@ -19,21 +18,6 @@ public class Simplex {
         readFromFile(fileName);
         getTableFormTask();
         solve();
-//        printTable();
-//        countDelta();
-//        System.out.println(Arrays.toString(delta));
-//
-//        System.out.println(getRow() + " " + getColumn(getRow()));
-//        updateTable(getRow(), getColumn(getRow()));
-//        printTable();
-//        countDelta();
-//        System.out.println(Arrays.toString(delta));
-//
-//        System.out.println(getRow() + " " + getColumn(getRow()));
-//        updateTable(getRow(), getColumn(getRow()));
-//        printTable();
-//        countDelta();
-//        System.out.println(Arrays.toString(delta));
     }
 
     public void readFromFile(String filePath) throws IOException {
@@ -167,6 +151,9 @@ public class Simplex {
 
     public void countDelta() {
         for (int i = 0; i < numberOfConstraints + numberOfVariables + 1; i++) {
+            delta[i] = 0;
+        }
+        for (int i = 0; i < numberOfConstraints + numberOfVariables + 1; i++) {
             for (int j = 0; j < numberOfConstraints; j++) {
                 delta[i] += table[numberOfConstraints][basis[j] - 1] * table[j][i];
             }
@@ -178,30 +165,45 @@ public class Simplex {
         int count = 0;
         System.out.println("Iterations: " + count);
         printTable();
+        printDelta();
         while (true) {
-            int row = getRow();
-            if (row == -1) {
-                break;
+            if (minimal) {
+                int row = getRow();
+                if (row == -1) {
+                    break;
+                }
+                int column = getColumn(row);
+
+                System.out.println("Row: " + (row + 1));
+                System.out.println("Column: " + (column + 1));
+                updateTable(row, column);
+                count++;
+                System.out.println("Iterations: " + count);
+                printTable();
+                printDelta();
+            } else {
+                int column = getColumnMax();
+                if (allPositive(delta)) {
+                    break;
+                }
+                int row = getRowMax(column);
+                System.out.println("Row: " + (row + 1));
+                System.out.println("Column: " + (column + 1));
+                updateTable(row, column);
+                count++;
+                System.out.println("Iterations: " + count);
+                printTable();
+                printDelta();
             }
-            int column = getColumn(row);
-            System.out.println("Row: " + (row + 1));
-            System.out.println("Column: " + (column + 1));
-            updateTable(row, column);
-            count++;
-            System.out.println("Iterations: " + count);
-            printTable();
         }
-        countDelta();
-        for (int i = 0; i < numberOfConstraints + numberOfVariables - 1; i++) {
-            System.out.print("Δ" + (i + 1) + " = " + delta[i] + " ");
-        }
-        System.out.println("ΔB = " + delta[numberOfConstraints + numberOfVariables]);
 
-
-        for (int i = 0; i < numberOfConstraints + numberOfVariables; i++) {
-            if (delta[i] > 0) {
+        if (minimal) {
+            if (allPositive(delta)) {
                 isOptimal = false;
-                break;
+            }
+        } else {
+            if (!allPositive(delta)) {
+                isOptimal = false;
             }
         }
 
@@ -210,14 +212,47 @@ public class Simplex {
             for (int i = 1; i < numberOfVariables + 1; i++) {
                 System.out.print("X" + (i) + " = ");
                 if (contains(basis, i)) {
-                    System.out.print(table[i - 2][numberOfVariables + numberOfConstraints]);
+                    System.out.print(table[getBasicIndex(i)][numberOfVariables + numberOfConstraints]);
                 } else {
                     System.out.print("0");
                 }
                 System.out.println();
             }
-            System.out.println("F = " + delta[numberOfConstraints + numberOfVariables]);
+            System.out.printf("F = %.2f%n", delta[numberOfConstraints + numberOfVariables]);
         }
+    }
+
+    private int getColumnMax() {
+        int column = -1;
+        double min = Double.MAX_VALUE;
+        for (int i = 0; i < numberOfConstraints + numberOfVariables; i++) {
+            if (delta[i] < min) {
+                min = delta[i];
+                column = i;
+            }
+        }
+        return column;
+    }
+
+    private int getRowMax(int column) {
+        int row = -1;
+        double min = Double.MAX_VALUE;
+        for (int i = 0; i < numberOfConstraints; i++) {
+            if (table[i][column] > 0 &&
+                    table[i][numberOfVariables + numberOfConstraints] / table[i][column] < min) {
+                min = table[i][numberOfVariables + numberOfConstraints] / table[i][column];
+                row = i;
+            }
+        }
+        return row;
+    }
+
+    public void printDelta() {
+        countDelta();
+        for (int i = 0; i < numberOfConstraints + numberOfVariables - 1; i++) {
+            System.out.printf("Δ%d = %.2f ", i + 1, delta[i]);
+        }
+        System.out.printf("ΔB = %.2f%n", delta[numberOfConstraints + numberOfVariables]);
     }
 
     public static boolean contains(int[] array, int target) {
@@ -227,5 +262,24 @@ public class Simplex {
             }
         }
         return false;
+    }
+
+    public static boolean allPositive(double[] array) {
+        for (double num : array) {
+            if (num < 0) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+
+    public int getBasicIndex(int i) {
+        for(int j = 0; j < numberOfVariables; j++) {
+            if(basis[j] == i) {
+                return j;
+            }
+        }
+        return -1;
     }
 }
