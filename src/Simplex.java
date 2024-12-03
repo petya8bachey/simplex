@@ -3,16 +3,16 @@ import java.io.FileReader;
 import java.io.IOException;
 
 public class Simplex {
-    String[] signs;
-    double[] lastColumn;
-    double[][] task;
-    double[][] table;
-    int numberOfVariables;
-    int numberOfConstraints;
-    boolean minimal;
-    int[] basis;
-    double[] delta;
-    boolean isOptimal = true;
+    private String[] signs;
+    private double[] lastColumn;
+    private double[][] task;
+    private double[][] table;
+    private int numberOfVariables;
+    private int numberOfConstraints;
+    private int totalNumber;
+    private boolean minimal;
+    private int[] basis;
+    private double[] delta;
 
     public Simplex(String fileName) throws IOException {
         readFromFile(fileName);
@@ -21,68 +21,66 @@ public class Simplex {
     }
 
     public void readFromFile(String filePath) throws IOException {
-        BufferedReader reader = new BufferedReader(new FileReader(filePath));
-        String firstLine = reader.readLine();
-        String[] firstLineParts = firstLine.split(" ");
-        numberOfVariables = Integer.parseInt(firstLineParts[0]);
-        numberOfConstraints = Integer.parseInt(firstLineParts[1]);
+        try (BufferedReader reader = new BufferedReader(new FileReader(filePath))) {
+            String[] firstLineParts = reader.readLine().split(" ");
+            numberOfVariables = Integer.parseInt(firstLineParts[0]);
+            numberOfConstraints = Integer.parseInt(firstLineParts[1]);
+            totalNumber = numberOfVariables + numberOfConstraints;
 
-        task = new double[numberOfConstraints + 1][numberOfVariables];
-        signs = new String[numberOfConstraints + 1];
-        lastColumn = new double[numberOfConstraints + 1];
+            task = new double[numberOfConstraints + 1][numberOfVariables];
+            signs = new String[numberOfConstraints + 1];
+            lastColumn = new double[numberOfConstraints + 1];
 
-        String line;
-        int rowIndex = 0;
+            String line;
+            int rowIndex = 0;
+            while ((line = reader.readLine()) != null) {
+                String[] parts = line.split(" ");
+                for (int i = 0; i < numberOfVariables; i++) {
+                    task[rowIndex][i] = Double.parseDouble(parts[i]);
+                }
 
-        while ((line = reader.readLine()) != null) {
+                signs[rowIndex] = parts[numberOfVariables];
+                lastColumn[rowIndex] = rowIndex < numberOfConstraints
+                        ? Double.parseDouble(parts[numberOfVariables + 1])
+                        : 0;
+                if (rowIndex == numberOfConstraints) {
+                    minimal = parts[numberOfVariables + 1].equals("min");
+                }
 
-            String[] parts = line.split(" ");
-
-            for (int i = 0; i < numberOfVariables; i++) {
-                task[rowIndex][i] = Double.parseDouble(parts[i]);
+                rowIndex++;
             }
-
-            signs[rowIndex] = parts[numberOfVariables];
-
-            if (rowIndex < numberOfConstraints) {
-                lastColumn[rowIndex] = Double.parseDouble(parts[numberOfVariables + 1]);
-            } else {
-                minimal = parts[numberOfVariables + 1].equals("min");
-                lastColumn[rowIndex] = 0;
-            }
-
-            rowIndex++;
         }
     }
 
     public void getTableFormTask() {
-        table = new double[numberOfConstraints + 1][numberOfVariables + numberOfConstraints + 1];
+        table = new double[numberOfConstraints + 1][totalNumber + 1];
         int counter = 0;
         for (int i = 0; i < numberOfConstraints + 1; i++) {
             double sign = signs[i].equals(">") ? -1 : 1;
+            System.arraycopy(task[i], 0, table[i], 0, numberOfVariables);
             for (int j = 0; j < numberOfVariables; j++) {
-                table[i][j] = task[i][j] * sign;
+                table[i][j] *= sign;
             }
             table[i][numberOfVariables + counter] = 1;
-            table[i][numberOfVariables + numberOfConstraints] = lastColumn[i] * sign;
+            table[i][totalNumber] = lastColumn[i] * sign;
             counter++;
         }
         basis = new int[numberOfConstraints];
         for (int i = 0; i < numberOfConstraints; i++) {
             basis[i] = i + numberOfVariables + 1;
         }
-        delta = new double[numberOfConstraints + numberOfVariables + 1];
+        delta = new double[totalNumber + 1];
     }
 
     public void printTable() {
-        System.out.println("-".repeat(12  * (numberOfVariables + numberOfConstraints + 1) + 2)); // Разделитель сверху
+        System.out.println("-".repeat(12 * (totalNumber + 1) + 3));
         System.out.printf("%-10s", "BASIS");
-        for (int i = 0; i < numberOfVariables + numberOfConstraints; i++) {
-            System.out.printf("| %-8s ", "X" + (i + 1)); // Заголовки для переменных
+        for (int i = 0; i < totalNumber; i++) {
+            System.out.printf("| %-8s ", "X" + (i + 1));
         }
         System.out.println("| B        |");
 
-        System.out.println("-".repeat(12  * (numberOfVariables + numberOfConstraints + 1) + 2));
+        System.out.println("-".repeat(12 * (totalNumber + 1) + 3));
 
         for (int i = 0; i < numberOfConstraints + 1; i++) {
             if (i == numberOfConstraints) {
@@ -91,45 +89,40 @@ public class Simplex {
                 System.out.printf("X%-9s", basis[i]);
             }
 
-            for (int j = 0; j < numberOfVariables + numberOfConstraints; j++) {
+            for (int j = 0; j < totalNumber; j++) {
                 System.out.printf("| %-8.2f ", table[i][j]);
             }
-            System.out.printf("| %-8.2f |", table[i][numberOfVariables + numberOfConstraints]);
+            System.out.printf("| %-8.2f |", table[i][totalNumber]);
             System.out.println();
         }
 
-        System.out.println("-".repeat(12  * (numberOfVariables + numberOfConstraints + 1) + 2));
+        System.out.println("-".repeat(12 * (totalNumber + 1) + 3));
     }
-
 
     public void updateTable(int row, int column) {
         basis[row] = column + 1;
-        double[][] newTable = new double[numberOfConstraints + 1][numberOfVariables + numberOfConstraints + 1];
         double element = table[row][column];
-        for (int i = 0; i < numberOfConstraints + numberOfVariables + 1; i++) {
-            newTable[row][i] = table[row][i] / element;
+        for (int i = 0; i < table[row].length; i++) {
+            table[row][i] /= element;
         }
+
         for (int i = 0; i < numberOfConstraints; i++) {
             if (i != row) {
                 element = table[i][column];
-                for (int j = 0; j < numberOfVariables + numberOfConstraints + 1; j++) {
-                    newTable[i][j] = table[i][j] - newTable[row][j] * element;
+                for (int j = 0; j < table[i].length; j++) {
+                    table[i][j] -= table[row][j] * element;
                 }
             }
         }
-        for (int i = 0; i < numberOfConstraints + numberOfVariables + 1; i++) {
-            newTable[numberOfConstraints][i] = table[numberOfConstraints][i];
-        }
-        table = newTable;
     }
 
     public int getRow() {
         int row = -1;
         double max = Double.MIN_VALUE;
         for (int i = 0; i < numberOfConstraints; i++) {
-            if (table[i][numberOfVariables + numberOfConstraints] < 0 &&
-                    Math.abs(table[i][numberOfVariables + numberOfConstraints]) > max) {
-                max = Math.abs(table[i][numberOfVariables + numberOfConstraints]);
+            if (table[i][totalNumber] < 0 &&
+                    Math.abs(table[i][totalNumber]) > max) {
+                max = Math.abs(table[i][totalNumber]);
                 row = i;
             }
         }
@@ -139,9 +132,8 @@ public class Simplex {
     public int getColumn(int row) {
         int column = -1;
         double max = Double.MIN_VALUE;
-        for (int i = 0; i < numberOfConstraints + numberOfVariables; i++) {
-            if (table[row][i] < 0 &&
-                    Math.abs(table[row][i]) > max) {
+        for (int i = 0; i < totalNumber; i++) {
+            if (table[row][i] < 0 && Math.abs(table[row][i]) > max) {
                 max = Math.abs(table[row][i]);
                 column = i;
             }
@@ -150,10 +142,11 @@ public class Simplex {
     }
 
     public void countDelta() {
-        for (int i = 0; i < numberOfConstraints + numberOfVariables + 1; i++) {
+        for (int i = 0; i < totalNumber + 1; i++) {
             delta[i] = 0;
         }
-        for (int i = 0; i < numberOfConstraints + numberOfVariables + 1; i++) {
+
+        for (int i = 0; i < totalNumber + 1; i++) {
             for (int j = 0; j < numberOfConstraints; j++) {
                 delta[i] += table[numberOfConstraints][basis[j] - 1] * table[j][i];
             }
@@ -161,71 +154,47 @@ public class Simplex {
         }
     }
 
-    public void solve() {
-        int count = 0;
+    private void solve() {
+        int count = 1;
         System.out.println("Iterations: " + count);
         printTable();
         printDelta();
+
         while (true) {
+            int row;
+            int column;
             if (minimal) {
-                int row = getRow();
-                if (row == -1) {
-                    break;
-                }
-                int column = getColumn(row);
-
-                System.out.println("Row: " + (row + 1));
-                System.out.println("Column: " + (column + 1));
+                row = getRow();
+                if (row == -1) break;
+                column = getColumn(row);
                 updateTable(row, column);
-                count++;
-                System.out.println("Iterations: " + count);
-                printTable();
-                printDelta();
             } else {
-                int column = getColumnMax();
-                if (allPositive(delta)) {
-                    break;
-                }
-                int row = getRowMax(column);
-                System.out.println("Row: " + (row + 1));
-                System.out.println("Column: " + (column + 1));
-                updateTable(row, column);
-                count++;
-                System.out.println("Iterations: " + count);
-                printTable();
-                printDelta();
+                column = getColumnMax();
+                if (allPositive(delta)) break;
+                row = getRowMax(column);
             }
+            System.out.println("Row: " + (row + 1));
+            System.out.println("Column: " + (column + 1));
+            updateTable(row, column);
+            count++;
+            System.out.println();
+            System.out.println("Iterations: " + count);
+            printTable();
+            printDelta();
         }
 
-        if (minimal) {
-            if (allPositive(delta)) {
-                isOptimal = false;
-            }
-        } else {
-            if (!allPositive(delta)) {
-                isOptimal = false;
-            }
+        System.out.println("Optimal");
+        for (int i = 1; i < numberOfVariables + 1; i++) {
+            System.out.print("X" + i + " = ");
+            System.out.printf("%.2f%n",contains(basis, i) ? table[getBasicIndex(i)][totalNumber] : 0);
         }
-
-        if (isOptimal) {
-            System.out.println("Optimal");
-            for (int i = 1; i < numberOfVariables + 1; i++) {
-                System.out.print("X" + (i) + " = ");
-                if (contains(basis, i)) {
-                    System.out.print(table[getBasicIndex(i)][numberOfVariables + numberOfConstraints]);
-                } else {
-                    System.out.print("0");
-                }
-                System.out.println();
-            }
-            System.out.printf("F = %.2f%n", delta[numberOfConstraints + numberOfVariables]);
-        }
+        System.out.printf("F = %.2f%n", delta[totalNumber]);
     }
 
     private int getColumnMax() {
         int column = -1;
         double min = Double.MAX_VALUE;
-        for (int i = 0; i < numberOfConstraints + numberOfVariables; i++) {
+        for (int i = 0; i < totalNumber; i++) {
             if (delta[i] < min) {
                 min = delta[i];
                 column = i;
@@ -239,23 +208,23 @@ public class Simplex {
         double min = Double.MAX_VALUE;
         for (int i = 0; i < numberOfConstraints; i++) {
             if (table[i][column] > 0 &&
-                    table[i][numberOfVariables + numberOfConstraints] / table[i][column] < min) {
-                min = table[i][numberOfVariables + numberOfConstraints] / table[i][column];
+                    table[i][totalNumber] / table[i][column] < min) {
+                min = table[i][totalNumber] / table[i][column];
                 row = i;
             }
         }
         return row;
     }
 
-    public void printDelta() {
+    private void printDelta() {
         countDelta();
-        for (int i = 0; i < numberOfConstraints + numberOfVariables - 1; i++) {
+        for (int i = 0; i < totalNumber - 1; i++) {
             System.out.printf("Δ%d = %.2f ", i + 1, delta[i]);
         }
-        System.out.printf("ΔB = %.2f%n", delta[numberOfConstraints + numberOfVariables]);
+        System.out.printf("ΔB = %.2f%n", delta[totalNumber]);
     }
 
-    public static boolean contains(int[] array, int target) {
+    private boolean contains(int[] array, int target) {
         for (int num : array) {
             if (num == target) {
                 return true;
@@ -264,21 +233,16 @@ public class Simplex {
         return false;
     }
 
-    public static boolean allPositive(double[] array) {
+    private boolean allPositive(double[] array) {
         for (double num : array) {
-            if (num < 0) {
-                return false;
-            }
+            if (num < 0) return false;
         }
         return true;
     }
 
-
-    public int getBasicIndex(int i) {
-        for(int j = 0; j < numberOfVariables; j++) {
-            if(basis[j] == i) {
-                return j;
-            }
+    private int getBasicIndex(int i) {
+        for (int j = 0; j < numberOfConstraints; j++) {
+            if (basis[j] == i) return j;
         }
         return -1;
     }
