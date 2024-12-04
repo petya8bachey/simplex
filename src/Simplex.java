@@ -1,4 +1,5 @@
 import java.io.BufferedReader;
+import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 
@@ -14,13 +15,13 @@ public class Simplex {
     private int[] basis;
     private double[] delta;
 
-    public Simplex(String fileName) throws IOException {
+    public Simplex(String fileName) {
         readFromFile(fileName);
         getTableFormTask();
         solve();
     }
 
-    public void readFromFile(String filePath) throws IOException {
+    public void readFromFile(String filePath) {
         try (BufferedReader reader = new BufferedReader(new FileReader(filePath))) {
             String[] firstLineParts = reader.readLine().split(" ");
             numberOfVariables = Integer.parseInt(firstLineParts[0]);
@@ -49,6 +50,8 @@ public class Simplex {
 
                 rowIndex++;
             }
+        } catch (IOException e) {
+            throw new RuntimeException(e);
         }
     }
 
@@ -173,8 +176,8 @@ public class Simplex {
                 if (allPositive(delta)) break;
                 row = getRowMax(column);
             }
-            System.out.println("Row: " + (row + 1));
-            System.out.println("Column: " + (column + 1));
+            System.out.println("Pivot row: " + (row + 1));
+            System.out.println("Pivot column: " + (column + 1));
             updateTable(row, column);
             count++;
             System.out.println();
