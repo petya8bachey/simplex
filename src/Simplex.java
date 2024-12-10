@@ -160,6 +160,8 @@ public class Simplex {
     }
 
     private void solve() {
+        System.out.println("Original system");
+        printOriginalSystem();
         System.out.println("Table");
         printTable();
         int count = 1;
@@ -288,5 +290,32 @@ public class Simplex {
             result[i] = table[i][totalNumber];
         }
         return result;
+    }
+
+    public void printOriginalSystem() {
+        for (int i = 0; i < numberOfConstraints; i++) {
+            for (int j = 0; j < numberOfVariables; j++) {
+                if (task[i][j] < 0) {
+                    System.out.printf(" - %.1fX%d", Math.abs(task[i][j]), j + 1);
+                } else if (task[i][j] > 0) {
+                    if (j == 0) {
+                        System.out.printf("%.1fX%d ",Math.abs(task[i][j]), j + 1);
+                    } else {
+                        System.out.printf(" + %.1fX%d ", Math.abs(task[i][j]), j + 1);
+                    }
+                }
+
+            }
+            System.out.printf(" %s %.1f%n",signs[i], lastColumn[i]);
+        }
+
+        for (int i = 0; i < numberOfVariables; i++) {
+            if (i == 0) {
+                System.out.printf("%.1fX%d", Math.abs(task[numberOfConstraints][i]), i + 1);
+            } else {
+                System.out.printf(" %s %.1fX%d ", task[numberOfConstraints][i] >= 0 ? "+" : "-", Math.abs(task[numberOfConstraints][i]), i + 1);
+            }
+        }
+        System.out.printf(" -> %s%n%n", minimal? "minimal" : "maximal");
     }
 }
