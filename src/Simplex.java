@@ -1,7 +1,7 @@
 import java.io.BufferedReader;
-import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
+import java.util.Arrays;
 
 public class Simplex {
     private String[] signs;
@@ -100,6 +100,8 @@ public class Simplex {
         }
 
         System.out.println("-".repeat(12 * (totalNumber + 1) + 3));
+        printDelta();
+        System.out.println();
     }
 
     public void updateTable(int row, int column) {
@@ -158,32 +160,39 @@ public class Simplex {
     }
 
     private void solve() {
-        int count = 1;
-        System.out.println("Iterations: " + count);
+        System.out.println("Table");
         printTable();
-        printDelta();
-
-        while (true) {
-            int row;
-            int column;
-            if (minimal) {
-                row = getRow();
-                if (row == -1) break;
-                column = getColumn(row);
-                updateTable(row, column);
-            } else {
-                column = getColumnMax();
-                if (allPositive(delta)) break;
-                row = getRowMax(column);
-            }
+        int count = 1;
+        int row;
+        int column;
+        while (!allPositive(getLastColumnFromTable())) {
+            System.out.println("Pre iterations: " + count);
+            System.out.println("There are negative values in column B.");
+            row = getRow();
+            column = getColumn(row);
             System.out.println("Pivot row: " + (row + 1));
             System.out.println("Pivot column: " + (column + 1));
             updateTable(row, column);
-            count++;
-            System.out.println();
-            System.out.println("Iterations: " + count);
             printTable();
-            printDelta();
+            count++;
+        }
+        count = 1;
+        while (true) {
+            if (minimal) {
+                if (allNegative(Arrays.copyOf(delta, totalNumber))) break;
+                column = getColumnMin();
+                row = getRowMin(column);
+            } else {
+                if (allPositive(Arrays.copyOf(delta, totalNumber))) break;
+                column = getColumnMax();
+                row = getRowMax(column);
+            }
+            System.out.println("Iterations: " + count);
+            System.out.println("Pivot row: " + (row + 1));
+            System.out.println("Pivot column: " + (column + 1));
+            updateTable(row, column);
+            printTable();
+            count++;
         }
 
         System.out.println("Optimal");
@@ -219,6 +228,22 @@ public class Simplex {
         return row;
     }
 
+    private int getColumnMin() {
+        int column = -1;
+        double max = Double.MIN_VALUE;
+        for (int i = 0; i < totalNumber; i++) {
+            if (delta[i] > max) {
+                max = delta[i];
+                column = i;
+            }
+        }
+        return column;
+    }
+
+    private int getRowMin(int column) {
+        return getRowMax(column);
+    }
+
     private void printDelta() {
         countDelta();
         for (int i = 0; i < totalNumber - 1; i++) {
@@ -248,5 +273,20 @@ public class Simplex {
             if (basis[j] == i) return j;
         }
         return -1;
+    }
+
+    private boolean allNegative(double[] array) {
+        for (double num : array) {
+            if (num > 0) return false;
+        }
+        return true;
+    }
+
+    private double[] getLastColumnFromTable() {
+        double[] result = new double[numberOfConstraints];
+        for (int i = 0; i < numberOfConstraints; i++) {
+            result[i] = table[i][totalNumber];
+        }
+        return result;
     }
 }
