@@ -72,7 +72,7 @@ public class Simplex {
         for (int i = 0; i < numberOfConstraints; i++) {
             basis[i] = i + numberOfVariables + 1;
         }
-        delta = new double[totalNumber + 1];
+        delta = new double[totalNumber + 2];
     }
 
     public void printTable() {
@@ -147,15 +147,22 @@ public class Simplex {
     }
 
     public void countDelta() {
-        for (int i = 0; i < totalNumber + 1; i++) {
+        for (int i = 0; i < totalNumber + 2; i++) {
             delta[i] = 0;
         }
 
-        for (int i = 0; i < totalNumber + 1; i++) {
-            for (int j = 0; j < numberOfConstraints; j++) {
-                delta[i] += table[numberOfConstraints][basis[j] - 1] * table[j][i];
+        for (int i = 0; i < totalNumber + 2; i++) {
+            if (i != totalNumber + 1) {
+                for (int j = 0; j < numberOfConstraints; j++) {
+                    delta[i] += table[numberOfConstraints][basis[j] - 1] * table[j][i];
+                }
+                delta[i] -= table[numberOfConstraints][i];
+            } else {
+                for (int j = 0; j < numberOfConstraints; j++) {
+                    delta[i] += table[numberOfConstraints][basis[j] - 1] * table[j][i - 1];
+                }
+                delta[i] -= table[numberOfConstraints][i - 1];
             }
-            delta[i] -= table[numberOfConstraints][i];
         }
     }
 
@@ -191,7 +198,7 @@ public class Simplex {
             }
             System.out.println("Iterations: " + count);
             System.out.println("Pivot row: " + (row + 1));
-            System.out.println("Pivot column: " + (column + 1));
+            System.out.println("Pivot column: " + (column + 1) + "\n");
             updateTable(row, column);
             printTable();
             count++;
@@ -248,10 +255,10 @@ public class Simplex {
 
     private void printDelta() {
         countDelta();
-        for (int i = 0; i < totalNumber - 1; i++) {
+        for (int i = 0; i < totalNumber; i++) {
             System.out.printf("Δ%d = %.2f ", i + 1, delta[i]);
         }
-        System.out.printf("ΔB = %.2f%n", delta[totalNumber]);
+        System.out.printf("ΔB = %.2f%n", delta[totalNumber + 1]);
     }
 
     private boolean contains(int[] array, int target) {
